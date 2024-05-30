@@ -1,80 +1,138 @@
 <!DOCTYPE html> 
-<html> 
-
+<html lang="en"> 
 <head> 
-	<title>Chat app using Socket IO and Node JS</title> 
-	<script src="https://cdn.tailwindcss.com"></script> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Chat app using Socket IO and Node JS</title> 
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet"> 
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+        }
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            width: 50%;
+            height: calc(100vh - 130px); /* Subtracting navbar height */
+            overflow-y: auto;
+        }
+        .message {
+            padding: 10px;
+            margin: 5px 0;
+            max-width: 80%;
+            word-wrap: break-word;
+            display: flex;
+            align-items: center;
+        }
+        .message.sent {
+            background-color: #dcf8c6;
+            justify-content: flex-end;
+        }
+        .message.received {
+            background-color: #fff;
+            justify-content: flex-start;
+        }
+        .message p {
+            margin: 0;
+        }
+        .message p.username {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #fff;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .input-container input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        .input-container button {
+            padding: 8px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
 </head> 
-
 <body> 
-	<h1 class="font-bold text-green-500 
-			text-3xl text-center mt-5"> 
-		محادثة غير مشفرة و غير خاصة و يمكن لأي حد أهل مراقبتها  
-	</h1> 
-	<div> 
-		<h2 class="font-semibold text-xl 
-				text-center mt-5" 
-			id="logo"> 
-			Chat App using Socket io 
-		</h2> 
-	</div> 
-	<form class="flex flex-col justify-center 
-				items-center mt-5" 
-		id="form"> 
-		<input class="border border-gray-400 
-					rounded-md mt-5 p-1" 
-			type="text"
-			placeholder="Name"
-			id="myname"> 
-		<input class="border border-gray-400 
-					rounded-md mt-5 p-1" 
-			type="text"
-			placeholder="Message"
-			id="message"> 
-		<button class="bg-blue-500 rounded-md p-2 
-					text-white mt-5"> 
-			Send 
-		</button> 
-	</form> 
-	<div class="flex flex-col justify-center 
-				items-center mt-5" 
-		id="messageArea"> 
-	</div> 
-</body> 
+    <div class="navbar"> 
+        <span class="font-bold text-xl">Chat App</span>
+        <span id="username" class="font-semibold"></span>
+    </div> 
+    <div class="chat-area" id="messageArea"></div> 
+    <div class="input-container">
+        <input type="text" placeholder="Message" id="message">
+        <button id="sendBtn">Send</button>
+    </div>
+
 <script src="/socket.io/socket.io.js"></script> 
 <script> 
-	let socket = io(); 
+    let socket = io(); 
+    let messageArea = document.getElementById("messageArea"); 
+    let sendBtn = document.getElementById('sendBtn');
+    let username = '';
 
-	let form = document.getElementById('form'); 
-	let myname = document.getElementById('myname'); 
-	let message = document.getElementById('message'); 
-	let messageArea = document.getElementById("messageArea"); 
+    sendBtn.addEventListener("click", (e) => { 
+        e.preventDefault(); 
+        if (message.value) { 
+            socket.emit('send message', { username: username, message: message.value }); 
+            message.value = ""; 
+        } 
+    }); 
 
-	form.addEventListener("submit", (e) => { 
-		e.preventDefault(); 
+    socket.on("connect", () => {
+        let myname = prompt("Please enter your name:");
+        if (myname) {
+            username = myname;
+            document.getElementById("username").textContent = username;
+        }
+    });
 
-		if (message.value) { 
-			socket.emit('send name', myname.value); 
-			socket.emit('send message', message.value); 
-			message.value = ""; 
-		} 
-	}); 
-
-	socket.on("send name", (username) => { 
-		let name = document.createElement("p"); 
-		name.style.backgroundColor = "grey"; 
-		name.style.width = "100%"; 
-		name.style.textAlign = "center"; 
-		name.style.color = "white"; 
-		name.textContent = username + ":"; 
-		messageArea.appendChild(name); 
-	}); 
-
-	socket.on("send message", (chat) => { 
-		let chatContent = document.createElement("p"); 
-		chatContent.textContent = chat; 
-		messageArea.appendChild(chatContent); 
-	}); 
+    socket.on("send message", (data) => { 
+        let messageContainer = document.createElement("div");
+        let messageContent = document.createElement("p");
+        let messageUsername = document.createElement("span");
+        
+        messageContent.textContent = data.message;
+        messageUsername.textContent = data.username + ': ';
+        messageUsername.classList.add('username');
+        
+        messageContainer.classList.add('message');
+        if (data.username === username) {
+            messageContainer.classList.add('sent');
+            messageContainer.appendChild(messageContent);
+            messageContainer.insertBefore(messageUsername, messageContainer.firstChild);
+        } else {
+            messageContainer.classList.add('received');
+            messageContainer.appendChild(messageUsername);
+            messageContainer.appendChild(messageContent);
+        }
+        
+        messageArea.insertBefore(messageContainer, messageArea.firstChild);
+    }); 
 </script> 
-
+</body> 
 </html>
